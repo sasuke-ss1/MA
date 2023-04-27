@@ -121,8 +121,19 @@ class ImgVector(nn.Module):
 
         return self.out(out)
     
-class Flat(nn.Module):
-    def __init__(self, inChannel):
+class ImgVector2(nn.Module):
+    def __init__(self, inputChannel: int, resnetSize: int, inputSize: int, slpSize: int, outputSize: int):
         super().__init__()
-        self.flat = nn.Flatten()
+        self.resnet = ResNet_18(inputChannel, resnetSize)
+        self.fc = nn.Linear(5+resnetSize,128)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(128, 32)
+        self.out = nn.Linear(32, outputSize)
+
+    def forward(self, img, label):
+        imgFeat = self.resnet(img)
+        catFeat = torch.cat([imgFeat, label], dim=1)
+        out = self.fc2(self.relu(self.fc(catFeat)))
+
+        return self.out(out)
         

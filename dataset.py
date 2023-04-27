@@ -38,11 +38,11 @@ class ImageVector(Dataset):
         path = self.imgPaths[index]
         name = path.split("/")[-1].split(".")[0]
     
-        img = cv2.imread(path)/255
+        img = cv2.imread(path)
         if self.transform:
             img = self.transform(img)
 
-        label = normalize(torch.tensor(labelDict[name], dtype=torch.float32), p=1, dim=0)
+        label = torch.tensor(labelDict[name], dtype=torch.float32)
 
         return (img.to(torch.float32), label[[2, 4, 6, 7 ,8]]), label[7:]
 
@@ -62,7 +62,7 @@ class OnlyVector(Dataset):
         path = self.imgPaths[index]
         name = path.split("/")[-1].split(".")[0]
 
-        label = normalize(torch.tensor(labelDict[name], dtype=torch.float32), p=1, dim=0)
+        label =torch.tensor(labelDict[name], dtype=torch.float32)
 
         return label[[2, 4, 6, 7, 8]], label[7:]     
 

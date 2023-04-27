@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from torch.optim import Adam
 from sklearn.model_selection import train_test_split
 
-
+torch.manual_seed(10)
 parser = ArgumentParser()
 
 parser.add_argument("--pathImg", "-pi", default="./ALL_Images", type=str)
@@ -21,19 +21,17 @@ args = parser.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
 
-transform = transforms.Compose([transforms.ToTensor(), transforms.Resize(224)])
-
 vecData = OnlyVector(args.pathImg)
 trainVec, testVec = train_test_split(vecData, test_size=0.2)
 trainVecLoader, testVecLoader = DataLoader(trainVec, batch_size=args.batch_size, shuffle=True), DataLoader(testVec)
 
-modelVec = SLP(5, 32, 2).to(device)
+modelVec = SLP(5, 256, 2).to(device)
 lossFn = nn.MSELoss()
 optim = Adam(modelVec.parameters(), args.learning_rate)
 
 def train():
     print("Training Begins")
-
+    full_val = []
     for e in range(1, args.epochs+1):
         for (x, y) in tqdm(trainVecLoader):
             x, y = x.to(device), y.to(device)
@@ -53,6 +51,9 @@ def train():
                 loss.append(lossFn(y_pred,y).item())
 
             print("The validation Loss in this Epoch is ",sum(loss)/len(loss), "\n")
+      
+        full_val.append(sum(loss)/len(loss))
+    print(f"Final average loss {sum(full_val)/len(full_val)}")
 
 if __name__ == "__main__":
     train()
