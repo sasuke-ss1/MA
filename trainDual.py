@@ -11,9 +11,10 @@ from sklearn.model_selection import train_test_split
 from torch.optim.lr_scheduler import MultiStepLR
 
 torch.manual_seed(10)
+
 parser = ArgumentParser()
 
-parser.add_argument("--pathImg", "-pi", default="./ALL_Images", type=str)
+parser.add_argument("--pathImg", "-pi", default="./NEW_Images", type=str)
 parser.add_argument("--batch_size", "-bs", default=32, type=int)
 parser.add_argument("--epochs", "-e", default=20, type=int)
 parser.add_argument("--learning_rate", "-lr", default=1e-3, type=float)
@@ -24,11 +25,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
 
 transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),transforms.Resize((224, 224))])
 
-vecData = ImageVector(args.pathImg, transform)
+vecData = DualImageVector(args.pathImg, transform)
 trainVec, testVec = train_test_split(vecData, test_size=0.2)
 trainVecLoader, testVecLoader = DataLoader(trainVec, batch_size=args.batch_size, shuffle=True), DataLoader(testVec)
 
-modelVec = ImgVector2(3, 64, 5, 32,2).to(device)
+modelVec = DualImgVector(3, 64, 5, 32,2).to(device)
 lossFn = nn.MSELoss()
 optim = Adam(modelVec.parameters(), args.learning_rate)
 scheduler = MultiStepLR(optim, milestones=[5, 10, 20, 25],gamma=0.5)
@@ -37,10 +38,10 @@ def train():
     print("Training Begins")
     full_val = []
     for e in range(1, args.epochs+1):
-        for (img, x), y in tqdm(trainVecLoader):
-            img, x, y = img.to(device), x.to(device), y.to(device)
+        for (img0, img1, x), y in tqdm(trainVecLoader):
+            img0, img1,x, y = img0.to(device), img1.to(device), x.to(device), y.to(device)
             
-            y_pred = modelVec(img, x)
+            y_pred = modelVec(img0, img1, x)
             loss = lossFn(y_pred, y)
 
             optim.zero_grad()
@@ -51,10 +52,10 @@ def train():
 
         with torch.no_grad():
             loss = []
-            for (img, x), y in testVecLoader:
-                img, x, y = img.to(device), x.to(device), y.to(device)
+            for (img0, img1, x), y in testVecLoader:
+                img0, img1, x, y = img0.to(device), img1.to(device),x.to(device), y.to(device)
                 
-                y_pred = modelVec(img, x)
+                y_pred = modelVec(img0, img1, x)
                 loss.append(lossFn(y_pred, y).item())
 
             print(f"The validation Loss in after Epoch{e} is {sum(loss)/len(loss):0.5f}", "\n")

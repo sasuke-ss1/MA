@@ -136,4 +136,21 @@ class ImgVector2(nn.Module):
         out = self.fc2(self.relu(self.fc(catFeat)))
 
         return self.out(out)
+    
+class DualImgVector(nn.Module):
+    def __init__(self, inputChannel: int, resnetSize: int, inputSize: int, slpSize: int, outputSize: int):
+        super().__init__()
+        self.resnet = ResNet_18(inputChannel, resnetSize)
+        self.fc = nn.Linear(5+2*resnetSize,128)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(128, 32)
+        self.out = nn.Linear(32, outputSize)
+
+    def forward(self, img0, img1, label):
+        img0Feat = self.resnet(img0)
+        img1Feat = self.resnet(img1)
+        catFeat = torch.cat([img0Feat, img1Feat, label], dim=1)
+        out = self.fc2(self.relu(self.fc(catFeat)))
+
+        return self.out(out)
         

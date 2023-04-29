@@ -50,7 +50,7 @@ def train():
                 y_pred = modelVec(x)
                 loss.append(lossFn(y_pred,y).item())
 
-            print("The validation Loss in this Epoch is ",sum(loss)/len(loss), "\n")
+            print(f"The validation Loss in after Epoch{e} is {sum(loss)/len(loss):0.5f}", "\n")
       
         full_val.append(sum(loss)/len(loss))
     print(f"Final average loss {sum(full_val)/len(full_val)}")
