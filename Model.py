@@ -77,7 +77,7 @@ class ResNet_18(nn.Module):
         x = x.view(x.shape[0], -1)
         x = self.relu(self.fc(x))
 
-        return self.fc2(x) 
+        return self.relu(self.fc2(x)) 
     
     def identity_downsample(self, in_channels, out_channels) -> nn.Sequential:
         
@@ -91,15 +91,18 @@ class SLP(nn.Module):
         super().__init__()
         self.fc1 = nn.Linear(inputSize, hiddenSize)
         self.act = nn.ReLU()
-        self.fc2 = nn.Linear(hiddenSize, outputSize)
+        self.fc2 = nn.Linear(hiddenSize, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, outputSize)
         self.out = out
 
     def forward(self, x):
         out = self.act(self.fc1(x))
-        if self.out:
-            return out
-        
-        return self.fc2(out)
+        out = self.act(self.fc2(out))
+        out = self.act(self.fc3(out))
+        out = self.fc4(out)
+
+        return out
     
 
 class ImgVector(nn.Module):
@@ -107,10 +110,10 @@ class ImgVector(nn.Module):
         super().__init__()
         self.resnet = ResNet_18(inputChannel, resnetSize)
         self.slp = SLP(inputSize, slpSize, slpSize)
-        self.fc = nn.Linear(slpSize+resnetSize,32)
+        self.fc = nn.Linear(slpSize+resnetSize,128)
         self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(32, 16)
-        self.out = nn.Linear(16, outputSize)
+        self.fc2 = nn.Linear(128, 64)
+        self.out = nn.Linear(64, outputSize)
 
     def forward(self, img, label):
         imgFeat = self.resnet(img)
@@ -125,15 +128,16 @@ class ImgVector2(nn.Module):
     def __init__(self, inputChannel: int, resnetSize: int, inputSize: int, slpSize: int, outputSize: int):
         super().__init__()
         self.resnet = ResNet_18(inputChannel, resnetSize)
-        self.fc = nn.Linear(5+resnetSize,128)
+        self.fc = nn.Linear(7+resnetSize,128)
         self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(128, 32)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 32)
         self.out = nn.Linear(32, outputSize)
 
     def forward(self, img, label):
         imgFeat = self.resnet(img)
         catFeat = torch.cat([imgFeat, label], dim=1)
-        out = self.fc2(self.relu(self.fc(catFeat)))
+        out = self.relu(self.fc3(self.relu(self.fc2(self.relu(self.fc(catFeat))))))
 
         return self.out(out)
     
@@ -141,12 +145,12 @@ class DualImgVector(nn.Module):
     def __init__(self, inputChannel: int, resnetSize: int, inputSize: int, slpSize: int, outputSize: int):
         super().__init__()
         self.resnet = ResNet_18(inputChannel, resnetSize)
-        self.fc = nn.Linear(5+2*resnetSize,128)
+        self.fc = nn.Linear(7+2*resnetSize,128)
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(128, 32)
         self.out = nn.Linear(32, outputSize)
 
-    def forward(self, img0, img1, label):
+    def forward(self, img0, img1, label) -> torch.Tensor:
         img0Feat = self.resnet(img0)
         img1Feat = self.resnet(img1)
         catFeat = torch.cat([img0Feat, img1Feat, label], dim=1)

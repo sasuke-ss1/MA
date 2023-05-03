@@ -44,7 +44,7 @@ class ImageVector(Dataset):
 
         label = torch.tensor(labelDict[name], dtype=torch.float32)
 
-        return (img.to(torch.float32), label[[2, 4, 6, 7 ,8]]), label[7:]
+        return (img.to(torch.float32), label[:7]), label[7]
 
 
 class OnlyVector(Dataset):
@@ -62,9 +62,9 @@ class OnlyVector(Dataset):
         path = self.imgPaths[index]
         name = path.split("/")[-1].split(".")[0]
 
-        label =torch.tensor(labelDict[name], dtype=torch.float32)
+        label = torch.tensor(labelDict[name], dtype=torch.float32)
 
-        return label[[2, 4, 6, 7, 8]], label[7:]     
+        return label[:7], label[7]     
 
 class DualImageVector(Dataset):
     def __init__(self, path: str, transform=None, labelDict=labelDict) -> None:
@@ -92,7 +92,7 @@ class DualImageVector(Dataset):
 
         label = torch.tensor(labelDict[name0[:-2]], dtype=torch.float32)
 
-        return (img0.to(torch.float32), img1.to(torch.float32), label[[2, 4, 6, 7 ,8]]), label[7:]
+        return (img0.to(torch.float32), img1.to(torch.float32), label[:7]), label[7]
     
 if __name__ == "__main__":
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),transforms.Resize((224, 224))])

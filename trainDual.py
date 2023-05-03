@@ -16,7 +16,7 @@ parser = ArgumentParser()
 
 parser.add_argument("--pathImg", "-pi", default="./NEW_Images", type=str)
 parser.add_argument("--batch_size", "-bs", default=32, type=int)
-parser.add_argument("--epochs", "-e", default=20, type=int)
+parser.add_argument("--epochs", "-e", default=30, type=int)
 parser.add_argument("--learning_rate", "-lr", default=1e-3, type=float)
 
 args = parser.parse_args()
@@ -27,24 +27,26 @@ transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5
 
 vecData = DualImageVector(args.pathImg, transform)
 trainVec, testVec = train_test_split(vecData, test_size=0.2)
-trainVecLoader, testVecLoader = DataLoader(trainVec, batch_size=args.batch_size, shuffle=True), DataLoader(testVec)
+trainVecLoader, testVecLoader = DataLoader(trainVec, batch_size=args.batch_size, shuffle=True), DataLoader(testVec, batch_size=args.batch_size)
 
-modelVec = DualImgVector(3, 64, 5, 32,2).to(device)
+modelVec = DualImgVector(3, 128, 5, 32,1).to(device)
 lossFn = nn.MSELoss()
 optim = Adam(modelVec.parameters(), args.learning_rate)
-scheduler = MultiStepLR(optim, milestones=[5, 10, 20, 25],gamma=0.5)
+scheduler = MultiStepLR(optim, milestones=[5, 10, 20, 25],gamma=0.1)
 
 def train():
     print("Training Begins")
     full_val = []
     for e in range(1, args.epochs+1):
+        modelVec.train()
         for (img0, img1, x), y in tqdm(trainVecLoader):
             img0, img1,x, y = img0.to(device), img1.to(device), x.to(device), y.to(device)
             
-            y_pred = modelVec(img0, img1, x)
+            optim.zero_grad()
+
+            y_pred = modelVec(img0, img1, x).squeeze(1)
             loss = lossFn(y_pred, y)
 
-            optim.zero_grad()
             loss.backward()
             optim.step()
         
@@ -52,10 +54,11 @@ def train():
 
         with torch.no_grad():
             loss = []
+            modelVec.eval()
             for (img0, img1, x), y in testVecLoader:
                 img0, img1, x, y = img0.to(device), img1.to(device),x.to(device), y.to(device)
                 
-                y_pred = modelVec(img0, img1, x)
+                y_pred = modelVec(img0, img1, x).squeeze(1)
                 loss.append(lossFn(y_pred, y).item())
 
             print(f"The validation Loss in after Epoch{e} is {sum(loss)/len(loss):0.5f}", "\n")

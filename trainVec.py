@@ -23,9 +23,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
 
 vecData = OnlyVector(args.pathImg)
 trainVec, testVec = train_test_split(vecData, test_size=0.2)
-trainVecLoader, testVecLoader = DataLoader(trainVec, batch_size=args.batch_size, shuffle=True), DataLoader(testVec)
+trainVecLoader, testVecLoader = DataLoader(trainVec, batch_size=args.batch_size, shuffle=True), DataLoader(testVec, batch_size=args.batch_size)
 
-modelVec = SLP(5, 256, 2).to(device)
+modelVec = SLP(7, 256, 1).to(device)
 lossFn = nn.MSELoss()
 optim = Adam(modelVec.parameters(), args.learning_rate)
 
@@ -33,21 +33,24 @@ def train():
     print("Training Begins")
     full_val = []
     for e in range(1, args.epochs+1):
+        modelVec.train()
         for (x, y) in tqdm(trainVecLoader):
             x, y = x.to(device), y.to(device)
 
-            y_pred = modelVec(x)
-            loss = lossFn(y_pred, y)
-
             optim.zero_grad()
+
+            y_pred = modelVec(x).squeeze(1)
+            loss = lossFn(y_pred, y)
+   
             loss.backward()
             optim.step()
 
         with torch.no_grad():
             loss = []
+            modelVec.eval()
             for (x,y) in testVecLoader:
                 x, y = x.to(device), y.to(device) 
-                y_pred = modelVec(x)
+                y_pred = modelVec(x).squeeze(1)
                 loss.append(lossFn(y_pred,y).item())
 
             print(f"The validation Loss in after Epoch{e} is {sum(loss)/len(loss):0.5f}", "\n")
