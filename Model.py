@@ -1,160 +1,25 @@
 import torch
 import torch.nn as nn
-from torchvision.models import resnet18
 
 
-class Block(nn.Module):
-    
-    def __init__(self, in_channels, out_channels, identity_downsample=None, stride=1) -> None:
-        super(Block, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.bn2 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU()
-        self.identity_downsample = identity_downsample
-        
-    def forward(self, x) -> torch.Tensor:
-        identity = x
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.conv2(x)
-        x = self.bn2(x)
-        if self.identity_downsample is not None:
-            identity = self.identity_downsample(identity)
-        x += identity
-        x = self.relu(x)
-        return x
-    
-
-
-class ResNet_18(nn.Module):
-    
-    def __init__(self, image_channels, num_classes) -> None:
-        
-        super(ResNet_18, self).__init__()
-        self.in_channels = 32
-        self.conv1 = nn.Conv2d(image_channels, 32, kernel_size=7, stride=2, padding=3)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.relu = nn.ReLU()
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        
-        #resnet layers
-        self.layer1 = self.__make_layer(32, 32, stride=1)
-        self.layer2 = self.__make_layer(32, 64, stride=2)
-        self.layer3 = self.__make_layer(64, 128, stride=2)
-        self.layer4 = self.__make_layer(128, 256, stride=2)
-        
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(256, 128)
-        self.fc2 = nn.Linear(128, num_classes)
-        
-    def __make_layer(self, in_channels, out_channels, stride) -> nn.Sequential:
-        
-        identity_downsample = None
-        if stride != 1:
-            identity_downsample = self.identity_downsample(in_channels, out_channels)
-            
-        return nn.Sequential(
-            Block(in_channels, out_channels, identity_downsample=identity_downsample, stride=stride), 
-            Block(out_channels, out_channels)
-        )
-    
-    def forward(self, x) -> torch.Tensor:
-        
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-        
-        x = self.avgpool(x)
-        x = x.view(x.shape[0], -1)
-        x = self.relu(self.fc(x))
-
-        return self.relu(self.fc2(x)) 
-    
-    def identity_downsample(self, in_channels, out_channels) -> nn.Sequential:
-        
-        return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1), 
-            nn.BatchNorm2d(out_channels)
-        )
-    
-class SLP(nn.Module):
-    def __init__(self, inputSize: int, hiddenSize: int,outputSize: int, out= False):
+class FNN(nn.Module):
+    def __init__(self, inDims: int, hiddenDims: int, numLayers: int, activation: str) -> None:
         super().__init__()
-        self.fc1 = nn.Linear(inputSize, hiddenSize)
-        self.act = nn.ReLU()
-        self.fc2 = nn.Linear(hiddenSize, 128)
-        self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, outputSize)
-        self.out = out
-
-    def forward(self, x):
-        out = self.act(self.fc1(x))
-        out = self.act(self.fc2(out))
-        out = self.act(self.fc3(out))
-        out = self.fc4(out)
-
-        return out
-    
-
-class ImgVector(nn.Module):
-    def __init__(self, inputChannel: int, resnetSize: int, inputSize: int, slpSize: int, outputSize: int):
-        super().__init__()
-        self.resnet = ResNet_18(inputChannel, resnetSize)
-        self.slp = SLP(inputSize, slpSize, slpSize)
-        self.fc = nn.Linear(slpSize+resnetSize,128)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(128, 64)
-        self.out = nn.Linear(64, outputSize)
-
-    def forward(self, img, label):
-        imgFeat = self.resnet(img)
-        labelFeat = self.slp(label)
-
-        catFeat = torch.cat([imgFeat, labelFeat], dim=1)
-        out = self.fc2(self.relu(self.fc(catFeat)))
-
-        return self.out(out)
-    
-class ImgVector2(nn.Module):
-    def __init__(self, inputChannel: int, resnetSize: int, inputSize: int, slpSize: int, outputSize: int):
-        super().__init__()
-        self.resnet = ResNet_18(inputChannel, resnetSize)
-        self.fc = nn.Linear(7+resnetSize,128)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 32)
-        self.out = nn.Linear(32, outputSize)
-
-    def forward(self, img, label):
-        imgFeat = self.resnet(img)
-        catFeat = torch.cat([imgFeat, label], dim=1)
-        out = self.relu(self.fc3(self.relu(self.fc2(self.relu(self.fc(catFeat))))))
-
-        return self.out(out)
-    
-class DualImgVector(nn.Module):
-    def __init__(self, inputChannel: int, resnetSize: int, inputSize: int, slpSize: int, outputSize: int):
-        super().__init__()
-        self.resnet = ResNet_18(inputChannel, resnetSize)
-        self.fc = nn.Linear(7+2*resnetSize,128)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(128, 32)
-        self.out = nn.Linear(32, outputSize)
-
-    def forward(self, img0, img1, label) -> torch.Tensor:
-        img0Feat = self.resnet(img0)
-        img1Feat = self.resnet(img1)
-        catFeat = torch.cat([img0Feat, img1Feat, label], dim=1)
-        out = self.fc2(self.relu(self.fc(catFeat)))
-
-        return self.out(out)
         
+        self.activation = getattr(nn, activation)()
+        dims = [inDims];dims += [hiddenDims]*numLayers;dims.append(1)  
+        layers= [nn.Linear(inDims, inDims), nn.Tanh(), nn.LayerNorm(inDims)]
+
+        for i in range(len(dims)-2):
+            layers.append(nn.Linear(dims[i], dims[i+1]))
+            layers.append(self.activation)
+            layers.append(nn.LayerNorm(dims[i+1]))
+        layers.append(nn.Linear(dims[-2], dims[-1]))
+
+        self.nn = nn.Sequential(*layers)        
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out  = self.nn(x)
+        
+        return(out.squeeze(1))
+    

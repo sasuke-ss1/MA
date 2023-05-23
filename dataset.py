@@ -1,105 +1,57 @@
-import os
-import cv2
-import sys
 from torch.utils.data import Dataset
 import torch
-from torch.nn.functional import normalize
-from torchvision import transforms
 
 
-path = "./Data.txt"
-pathImg = "./ALL_Images"
-with open(path, "r") as f:
-    a = f.readlines()
-
-labelDict = {}
-
-for line in a:
-    l = eval(line)
-    name = l[0]
-    data = l[1:]
-    labelDict[name] = data
-
-
-## Preprocessing code
-
-class ImageVector(Dataset):
-    def __init__(self, path: str, transform=None, labelDict=labelDict) -> None:
-        super().__init__()
-
-        self.imgPaths = [os.path.join(path, i) for i in os.listdir(path)]
-        self.labelDict = labelDict
-        self.transform = transform
-
-    def __len__(self) -> int:
-        return len(self.imgPaths)
-    
-    def __getitem__(self, index):
-        path = self.imgPaths[index]
-        name = path.split("/")[-1].split(".")[0]
-    
-        img = cv2.imread(path)
-        if self.transform:
-            img = self.transform(img)
-
-        label = torch.tensor(labelDict[name], dtype=torch.float32)
-
-        return (img.to(torch.float32), label[:7]), label[7]
-
+#path = "./Data.txt"
+#pathImg = "./ALL_Images"
+#with open(path, "r") as f:
+#    a = f.readlines()
+#
+#labelDict = {}
+#norm = np.zeros((4096, 9))
+#
+#for i, line in enumerate(a):
+#    l = eval(line)
+#    norm[i, :] = l[1:]
+#
+#data = normalize(norm[:, :7], axis=0, norm='max')
+#data = np.concatenate((data, norm[:, 7:]), axis=1)
+#
+#for i, line in enumerate(a):
+#    l = eval(line)
+#    name = l[0]
+#    labelDict[name] = data[i, :]
 
 class OnlyVector(Dataset):
-    def __init__(self, path: str,labelDict=labelDict) -> None:
+    def __init__(self, path: str, normalize: bool) -> None:
         super().__init__()
-
-        self.imgPaths = [os.path.join(path, i) for i in os.listdir(path)]
-        self.labelDict = labelDict
-
-    def __len__(self) -> int:
-        assert len(self.labelDict) == len(self.imgPaths)
-        return len(self.imgPaths)
-
-    def __getitem__(self, index) -> torch.Tensor:
-        path = self.imgPaths[index]
-        name = path.split("/")[-1].split(".")[0]
-
-        label = torch.tensor(labelDict[name], dtype=torch.float32)
-
-        return label[:7], label[7]     
-
-class DualImageVector(Dataset):
-    def __init__(self, path: str, transform=None, labelDict=labelDict) -> None:
-        super().__init__()
-
-        self.imgPaths = [os.path.join(path, i) for i in sorted(os.listdir(path))]
-        self.labelDict = labelDict
-        self.transform = transform
-
-    def __len__(self) -> int:
-        return len(self.imgPaths)//2
-    
-    def __getitem__(self, index):
-        path0, path1 = self.imgPaths[2*index], self.imgPaths[2*index + 1]
         
-        name0 = path0.split("/")[-1].split(".")[0]
-        name1 = path1.split("/")[-1].split(".")[0]
+        with open(path, "r") as f:
+            a = f.readlines()
+        
+        self.data = torch.zeros((len(a), len(eval(a[0]))), dtype=torch.float32)
 
-        assert name0[:-2] == name1[:-2], f"Images Not Paired, Found IMG0 to be {name0} and IMG1 to be {name1}" 
+        for i, line in enumerate(a):
+            l = eval(line)
+            self.data[i] = torch.tensor(l, dtype=torch.float32)
+        
+        if normalize:
+            self.normalize()            
+    
+    def normalize(self) -> None:
+        for i in range(self.data.shape[1] - 1):
+            self.data[..., i] = self.data[..., i]/torch.max(self.data[i])
 
-        img0, img1 = cv2.imread(path0), cv2.imread(path1)
-        if self.transform:
-            img0 = self.transform(img0)
-            img1 = self.transform(img1)
+    def __len__(self) -> int:
+        return self.data.shape[0]
 
-        label = torch.tensor(labelDict[name0[:-2]], dtype=torch.float32)
 
-        return (img0.to(torch.float32), img1.to(torch.float32), label[:7]), label[7]
+    def __getitem__(self, idx) -> tuple:
+
+        return self.data[idx, :7], self.data[idx, 7]     
     
 if __name__ == "__main__":
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),transforms.Resize((224, 224))])
-    data = DualImageVector("./NEW_Images", transform)
-    (img0, img1, feat), y = data[1]
 
-    print(img0.shape)
-    print(img1.shape)
-    print(feat.shape)
+    data = OnlyVector('./Data4.txt', False)
+    print(data[0])
     
