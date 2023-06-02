@@ -47,6 +47,7 @@ scheduler = MultiStepLR(optim, [100, 200], gamma=0.5)
 for e in range(args.epochs):
     loop_obj = tqdm(trainLoader)
     trainLoss = []
+    model.train()
     for x, y in loop_obj:
         x, y = x.to(device), y.to(device)
 
@@ -66,6 +67,7 @@ for e in range(args.epochs):
     valLoss = []
 
     with torch.no_grad():
+        model.eval()
         for x, y in valLoader:
             x, y = x.to(device), y.to(device)
 
