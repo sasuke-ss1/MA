@@ -1,6 +1,8 @@
 from torch.utils.data import Dataset
 import torch
-
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
 class OnlyVector(Dataset):
     def __init__(self, path: str, normalize: bool) -> None:
@@ -29,7 +31,7 @@ class OnlyVector(Dataset):
 
     def __getitem__(self, idx) -> tuple:
 
-        return self.data[idx, :7], self.data[idx, 7]     
+        return self.data[idx, :7], self.data[idx, 7], self.data[idx, 8]     
     
 class TestData(Dataset):
     def __init__(self, path: str, mean: torch.Tensor, std: torch.Tensor) -> None:
@@ -51,8 +53,25 @@ class TestData(Dataset):
     def __getitem__(self, idx) -> torch.Tensor:
         return self.data[idx]
 
-if __name__ == "__main__":
 
-    data = OnlyVector('./Data4.txt', True)
-    print(data[0])
+def plot(path: str):
+    with open(path, "r") as f:
+        a = f.readlines()
+
+    data = np.zeros((len(a), len(eval(a[0]))), dtype=np.float32)
+
+    for i, line in enumerate(a):
+        l = eval(line)
+        data[i] = np.array(l, dtype=np.float32)
+    df = pd.DataFrame(data)
+    
+    for i in range(0, 9):
+        plt.figure()
+        df[i].plot(kind="hist")
+    
+    plt.show()
+if __name__ == "__main__":
+    plot("./Data_10_5.txt")
+    #data = OnlyVector('./Data_10_5.txt', True)
+   
     

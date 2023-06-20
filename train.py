@@ -11,6 +11,7 @@ from torch.optim.lr_scheduler import MultiStepLR
 from math import sqrt
 import matplotlib.pyplot as plt
 import numpy as np
+from copy import deepcopy
 
 RANDOM_SEED = 42
 torch.manual_seed(RANDOM_SEED)
@@ -43,6 +44,8 @@ print(model)
 lossFn = MSELoss()
 optim = Adam(model.parameters(), lr=args.learningRate)
 scheduler = MultiStepLR(optim, [100, 200], gamma=0.5)
+bestLoss = 10
+bestModel = None
 
 for e in range(args.epochs):
     loop_obj = tqdm(trainLoader)
@@ -79,6 +82,10 @@ for e in range(args.epochs):
     print("\n")
     scheduler.step()
 
+    if sqrt(sum(valLoss)/len(valLoss)) < bestLoss:
+        bestLoss = sqrt(sum(valLoss)/len(valLoss))
+        bestModel = deepcopy(model)
+
 # Plotting first layer weights
 
 weights = list(model.nn.children())[0].weight.detach().numpy()
@@ -92,4 +99,5 @@ plt.xticks([])
 plt.savefig(args.name+".png")
 plt.show()
 
-torch.save(model, "Model.h5")
+torch.save(bestModel, "Model.h5")
+print(f"Best validation loss : {bestLoss}")
