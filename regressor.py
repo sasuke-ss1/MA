@@ -84,7 +84,7 @@ mol_objects = [Chem.MolFromSmiles(smile) for smile in smiles]
 fingerprints = [Chem.RDKFingerprint(mol) for mol in mol_objects]
 
 features = [computeDescriptors(x, calculator) for x in mol_objects]
-
+exit(0)
 simple_tree.fit(features, y)
 preds = simple_tree.predict(features)
 
