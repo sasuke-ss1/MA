@@ -73,6 +73,9 @@ for i in range(len(smiles)):
    Y5.append(y5/num)
 
 
+
+
+
 print(len(Y1), len(Y2), len(Y3), len(Y4), len(Y5))
 
 
